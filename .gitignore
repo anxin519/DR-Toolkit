@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# 虚拟环境
+venv/
+.venv/
+env/
+.env/
+
+# 日志（不上传运行日志）
+logs/*.log
+
+# 运行时生成的配置和队列（含本地路径，不上传）
+config/forward_queue.json
+config/worklist_data.json
+
+# 存储的DICOM文件（可能含患者隐私）
+storage/
+
+# 打包输出
+*.exe
+*.spec
+dist/
+build/
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# Windows
+Thumbs.db
+Desktop.ini

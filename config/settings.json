@@ -1,0 +1,12 @@
+{
+  "local_ae": {
+    "title": "DICOM_TOOL",
+    "port": 11112
+  },
+  "remote_ae": {
+    "title": "REMOTE_AE",
+    "host": "127.0.0.1",
+    "port": 104
+  },
+  "storage_path": "./dicom_storage"
+}

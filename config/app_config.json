@@ -1,0 +1,67 @@
+{
+  "remote_nodes": [
+    {
+      "name": "默认PACS",
+      "ae": "PACS_SCP",
+      "host": "127.0.0.1",
+      "port": 104
+    }
+  ],
+  "local_scp": {
+    "ae": "DICOM_TOOL",
+    "port": 11112,
+    "storage_path": "./storage"
+  },
+  "forward_rules": [],
+  "worklist_scp": {
+    "port": 11113,
+    "ae": "WORKLIST_SCP"
+  },
+  "ui_settings": {
+    "theme": "cosmo",
+    "last_folder": "",
+    "window_size": [
+      1100,
+      750
+    ],
+    "window_presets": {
+      "lung": {
+        "center": -600,
+        "width": 1500
+      },
+      "mediastinum": {
+        "center": 40,
+        "width": 400
+      },
+      "bone": {
+        "center": 400,
+        "width": 1800
+      },
+      "soft_tissue": {
+        "center": 50,
+        "width": 350
+      }
+    }
+  },
+  "export_fields": [
+    "filepath",
+    "filename",
+    "PatientName",
+    "PatientID",
+    "PatientSex",
+    "PatientAge",
+    "PatientBirthDate",
+    "StudyDate",
+    "StudyTime",
+    "Modality",
+    "SeriesDescription"
+  ],
+  "anonymize": {
+    "keep_last_digits": 4,
+    "prefix": "ANON"
+  },
+  "uid_strategy": {
+    "method": "append_timestamp",
+    "custom_suffix": ""
+  }
+}
