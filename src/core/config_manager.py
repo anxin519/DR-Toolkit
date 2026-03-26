@@ -16,9 +16,7 @@ class ConfigManager:
             "port": 11112,
             "storage_path": "./storage"
         },
-        "forward_rules": [],
-        "worklist_scp": {
-            "port": 11113,
+        "worklist_scp": {            "port": 11113,
             "ae": "WORKLIST_SCP"
         },
         "ui_settings": {
@@ -33,9 +31,9 @@ class ConfigManager:
             }
         },
         "export_fields": [
-            "filepath", "filename", "PatientName", "PatientID", 
-            "PatientSex", "PatientAge", "PatientBirthDate",
-            "StudyDate", "StudyTime", "Modality", "SeriesDescription"
+            "filepath", "filename", "PatientName", "PatientID",
+            "PatientSex", "PatientAge", "StudyDate", "Modality",
+            "StudyInstanceUID", "SeriesInstanceUID", "SOPInstanceUID"
         ],
         "anonymize": {
             "keep_last_digits": 4,

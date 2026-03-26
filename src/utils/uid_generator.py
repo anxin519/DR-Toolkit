@@ -65,50 +65,48 @@ def modify_uids(dataset, method="regenerate", custom_suffix="", modify_patient_i
     return dataset
 
 
-def batch_modify_uids(datasets, method="regenerate", new_accession=True, modify_patient_id=True):
+def batch_modify_uids(datasets, method="regenerate", new_accession=True,
+                      modify_patient_id=True, force_unique_study=False):
     """
     批量修改UID，保持Study/Series一致性。
-    Study/Series 统一重新生成（避免原UID过长截断问题）。
-    SOPInstanceUID 每个文件唯一。
 
     datasets: [(filepath, dataset), ...]
+    force_unique_study: True时每个文件都生成独立的StudyUID（用于原始文件StudyUID已损坏的情况）
     """
-    study_uid_map: dict = {}   # 原StudyUID → 新StudyUID
-    series_uid_map: dict = {}  # 原SeriesUID → 新SeriesUID
-    accession_map: dict = {}   # 原StudyUID → 新AccessionNumber
-    patient_id_map: dict = {}  # 原PatientID → 新PatientID
+    study_uid_map: dict = {}
+    series_uid_map: dict = {}
+    accession_map: dict = {}
+    patient_id_map: dict = {}
 
     date_str = datetime.now().strftime('%Y%m%d')
     pid_suffix = datetime.now().strftime('%m%d%H%M')
 
     for filepath, ds in datasets:
-        # StudyInstanceUID - 同Study保持一致
         old_study = str(getattr(ds, 'StudyInstanceUID', ''))
         if old_study:
-            if old_study not in study_uid_map:
-                study_uid_map[old_study] = generate_uid()
+            # force_unique_study：每个文件强制独立Study（原始UID已损坏时使用）
+            map_key = f"{old_study}_{filepath}" if force_unique_study else old_study
+            if map_key not in study_uid_map:
+                study_uid_map[map_key] = generate_uid()
                 if new_accession:
-                    accession_map[old_study] = f"{date_str}{random.randint(1000, 9999)}"
-            ds.StudyInstanceUID = study_uid_map[old_study]
-            if new_accession and old_study in accession_map:
-                ds.AccessionNumber = accession_map[old_study]
+                    accession_map[map_key] = f"{date_str}{random.randint(1000, 9999)}"
+            ds.StudyInstanceUID = study_uid_map[map_key]
+            if new_accession and map_key in accession_map:
+                ds.AccessionNumber = accession_map[map_key]
 
-        # SeriesInstanceUID - 同Series保持一致
         old_series = str(getattr(ds, 'SeriesInstanceUID', ''))
         if old_series:
-            if old_series not in series_uid_map:
-                series_uid_map[old_series] = generate_uid()
-            ds.SeriesInstanceUID = series_uid_map[old_series]
+            series_key = f"{old_series}_{filepath}" if force_unique_study else old_series
+            if series_key not in series_uid_map:
+                series_uid_map[series_key] = generate_uid()
+            ds.SeriesInstanceUID = series_uid_map[series_key]
 
-        # SOPInstanceUID - 每个文件唯一
         if hasattr(ds, 'SOPInstanceUID'):
             ds.SOPInstanceUID = generate_uid()
 
-        # 同步 file_meta
         if hasattr(ds, 'file_meta') and hasattr(ds, 'SOPInstanceUID'):
             ds.file_meta.MediaStorageSOPInstanceUID = ds.SOPInstanceUID
 
-        # PatientID - 同一原始ID映射到同一新ID
         if modify_patient_id and hasattr(ds, 'PatientID') and ds.PatientID:
             original_pid = str(ds.PatientID).strip()
             if original_pid not in patient_id_map:

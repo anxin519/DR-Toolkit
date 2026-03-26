@@ -222,20 +222,25 @@ def _save(app):
 
 def _apply_tag_edits(app):
     """
-    解析标签文本框中的内容，将修改应用回 dataset。
-    格式：(gggg, eeee)  KeywordName  [VR]  value
-    只处理有 keyword 且 VR 为常见字符串类型的标签。
+    解析标签文本框，将修改应用回 dataset。
+    支持字符串类型和数值类型（IS/DS）的 VR。
     """
     if not app.current_dataset:
         messagebox.showwarning("警告", "请先打开文件")
         return
 
     import re
+    from pydicom.values import convert_value
+
+    # 字符串类型 VR
     STRING_VRS = {'LO', 'LT', 'PN', 'SH', 'ST', 'UC', 'UI', 'UR', 'UT',
                   'CS', 'DA', 'DS', 'DT', 'IS', 'TM', 'AE', 'AS'}
+    # 整数类型
+    INT_VRS = {'US', 'SS', 'UL', 'SL', 'AT'}
+    # 浮点类型
+    FLOAT_VRS = {'FL', 'FD'}
 
     text = app.tag_text.get('1.0', 'end')
-    # 匹配格式：(gggg, eeee)  Keyword  [VR]  value
     pattern = re.compile(
         r'\(([0-9a-fA-F]{4}),\s*([0-9a-fA-F]{4})\)\s+(\w+)\s+\[(\w+)\]\s+(.*)')
 
@@ -247,12 +252,20 @@ def _apply_tag_edits(app):
             continue
         group, elem, keyword, vr, value = m.groups()
         value = value.strip()
-        if vr not in STRING_VRS or not keyword or keyword == 'PixelData':
+        if not keyword or keyword == 'PixelData':
             continue
         try:
             tag = (int(group, 16), int(elem, 16))
-            if tag in app.current_dataset:
+            if tag not in app.current_dataset:
+                continue
+            if vr in STRING_VRS:
                 app.current_dataset[tag].value = value
+                updated += 1
+            elif vr in INT_VRS:
+                app.current_dataset[tag].value = int(value)
+                updated += 1
+            elif vr in FLOAT_VRS:
+                app.current_dataset[tag].value = float(value)
                 updated += 1
         except Exception as e:
             errors.append(f"{keyword}: {e}")

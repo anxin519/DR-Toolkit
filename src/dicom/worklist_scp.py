@@ -96,7 +96,7 @@ class WorklistSCP:
         yield 0x0000, None  # Success / no more results
 
     def _match_item(self, query_ds, item: dict) -> bool:
-        """简单通配符匹配（空值=不过滤）"""
+        """匹配查询条件（空值=不过滤，支持通配符和日期范围）"""
         def _check(query_val, item_val):
             if not query_val:
                 return True
@@ -108,15 +108,49 @@ class WorklistSCP:
         if not _check(getattr(query_ds, 'PatientName', ''), item.get('PatientName', '')):
             return False
 
-        # 检查模态（在ScheduledProcedureStepSequence里）
+        # 检查 ScheduledProcedureStepSequence 里的模态和日期
         sps_seq = getattr(query_ds, 'ScheduledProcedureStepSequence', None)
-        if sps_seq:
-            sps = sps_seq[0] if len(sps_seq) > 0 else None
-            if sps:
-                modality = getattr(sps, 'Modality', '')
-                if modality and modality != item.get('Modality', ''):
+        if sps_seq and len(sps_seq) > 0:
+            sps = sps_seq[0]
+
+            # 模态过滤
+            modality = str(getattr(sps, 'Modality', '')).strip()
+            if modality and modality != item.get('Modality', ''):
+                return False
+
+            # 检查日期范围过滤（格式：YYYYMMDD 或 YYYYMMDD-YYYYMMDD）
+            query_date = str(getattr(sps, 'ScheduledProcedureStepStartDate', '')).strip()
+            if query_date:
+                item_date = item.get('StudyDate', '')
+                if not self._match_date_range(query_date, item_date):
                     return False
+
         return True
+
+    def _match_date_range(self, query_date: str, item_date: str) -> bool:
+        """
+        日期范围匹配。
+        query_date 格式：
+          YYYYMMDD        精确匹配
+          YYYYMMDD-       >= 开始日期
+          -YYYYMMDD       <= 结束日期
+          YYYYMMDD-YYYYMMDD  范围匹配
+        """
+        if not item_date or not query_date:
+            return True
+        try:
+            if '-' in query_date:
+                parts = query_date.split('-', 1)
+                start, end = parts[0].strip(), parts[1].strip()
+                if start and item_date < start:
+                    return False
+                if end and item_date > end:
+                    return False
+                return True
+            else:
+                return item_date == query_date
+        except Exception:
+            return True
 
     def _create_response(self, item: dict) -> Dataset:
         """构建C-FIND响应Dataset"""

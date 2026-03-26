@@ -13,20 +13,6 @@ class DicomSCU:
         self.ae = AE(ae_title=ae_title)
         self.ae.requested_contexts = StoragePresentationContexts
 
-    def send_file(self, filepath, remote_host, remote_port, remote_ae):
-        """发送单个DICOM文件（独立连接）"""
-        try:
-            ds = dcmread(filepath)
-            assoc = self.ae.associate(remote_host, int(remote_port), ae_title=remote_ae)
-            if assoc.is_established:
-                status = assoc.send_c_store(ds)
-                assoc.release()
-                return status is not None and status.Status == 0x0000
-            return False
-        except Exception as e:
-            print(f"发送失败 {filepath}: {e}")
-            return False
-
     def send_batch(self, file_list, remote_host, remote_port, remote_ae):
         """
         批量发送DICOM文件（复用同一连接，失败则重连）

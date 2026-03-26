@@ -32,7 +32,9 @@ def build(app) -> ttk_boot.Frame:
     batch_btn['menu'] = menu
     menu.add_command(label="批量匿名化", command=lambda: _batch_anonymize(app))
     menu.add_command(label="批量计算年龄", command=lambda: _batch_age(app))
-    menu.add_command(label="批量修改UID", command=lambda: _batch_uid(app))
+    menu.add_command(label="批量修改UID（保持Study关联）", command=lambda: _batch_uid(app, force_unique=False))
+    menu.add_separator()
+    menu.add_command(label="批量修改UID（每文件独立Study）", command=lambda: _batch_uid(app, force_unique=True))
 
     app.browser_progress = ttk_boot.Progressbar(toolbar, mode='determinate')
     app.browser_progress.pack(side='left', fill='x', expand=True, padx=10)
@@ -139,8 +141,8 @@ def _export(app):
 
 def _batch_run(app, fn, confirm_msg, done_msg):
     """
-    批量操作通用入口。
-    输出到源文件夹同级的 <原文件夹名>_updated 目录，保持子目录结构，原文件不变。
+    批量操作通用入口，支持中断。
+    输出到源文件夹同级的 <原文件夹名>_updated 目录。
     """
     if not app.browser_data:
         messagebox.showwarning("警告", "没有数据")
@@ -148,17 +150,28 @@ def _batch_run(app, fn, confirm_msg, done_msg):
     if not messagebox.askyesno("确认", confirm_msg):
         return
 
-    # 推断源文件夹（取第一个文件的父目录，再向上一级作为基准）
-    first_fp = app.browser_data[0][0]
     src_root = _find_common_root([fp for fp, _ in app.browser_data])
     out_root = os.path.join(os.path.dirname(src_root),
                             os.path.basename(src_root) + "_updated")
     os.makedirs(out_root, exist_ok=True)
 
+    # 中断事件
+    import threading
+    app._batch_cancel = threading.Event()
+
+    # 显示取消按钮
+    cancel_btn = ttk_boot.Button(
+        app.browser_progress.master, text="✕ 取消", bootstyle="danger",
+        command=lambda: app._batch_cancel.set())
+    cancel_btn.pack(side='left', padx=5)
+
     def run():
-        count = fn(app, src_root, out_root)
-        app.root.after(0, lambda: messagebox.showinfo(
-            "完成", done_msg.format(count) + f"\n\n输出目录:\n{out_root}"))
+        count = fn(app, src_root, out_root, app._batch_cancel)
+        app.root.after(0, cancel_btn.destroy)
+        if app._batch_cancel.is_set():
+            app.root.after(0, lambda: messagebox.showinfo("已取消", f"操作已取消，已处理 {count} 个文件"))
+        else:
+            app.root.after(0, lambda: messagebox.showinfo("完成", done_msg.format(count) + f"\n\n输出目录:\n{out_root}"))
 
     threading.Thread(target=run, daemon=True).start()
 
@@ -181,29 +194,36 @@ def _out_path(fp: str, src_root: str, out_root: str) -> str:
 
 
 def _batch_anonymize(app):
-    def fn(app, src_root, out_root):
+    def fn(app, src_root, out_root, cancel):
         keep = app.config.get('anonymize.keep_last_digits', 4)
         prefix = app.config.get('anonymize.prefix', 'ANON')
+        count = 0
         for idx, (fp, _) in enumerate(app.browser_data):
+            if cancel.is_set():
+                break
             try:
                 ds = pydicom.dcmread(fp)
                 DicomAnonymizer.anonymize(ds, prefix, keep)
                 DicomEditor.save_file(ds, _out_path(fp, src_root, out_root))
+                count += 1
             except Exception as e:
                 print(f"匿名化失败 {fp}: {e}")
             pct = (idx + 1) / len(app.browser_data) * 100
             app.root.after(0, lambda p=pct: app.browser_progress.config(value=p))
-        return len(app.browser_data)
+        return count
 
     _batch_run(app, fn,
                f"确定要匿名化 {len(app.browser_data)} 个文件吗？\n（输出到源文件夹同级的 _updated 目录）",
                "批量匿名化完成，共处理 {} 个文件")
 
 
+
 def _batch_age(app):
-    def fn(app, src_root, out_root):
+    def fn(app, src_root, out_root, cancel):
         count = 0
         for idx, (fp, meta_ds) in enumerate(app.browser_data):
+            if cancel.is_set():
+                break
             try:
                 if not getattr(meta_ds, 'PatientAge', None) and getattr(meta_ds, 'PatientBirthDate', None):
                     age = calculate_age(meta_ds.PatientBirthDate, getattr(meta_ds, 'StudyDate', None))
@@ -224,76 +244,44 @@ def _batch_age(app):
                "已处理 {} 个文件")
 
 
-def _batch_uid(app):
-    def fn(app, src_root, out_root):
+def _batch_uid(app, force_unique=False):
+    def fn(app, src_root, out_root, cancel):
         method = app.config.get('uid_strategy.method', 'regenerate')
         new_accession = app.config.get('uid_strategy.new_accession', True)
-        from datetime import datetime
-        import random
-        from utils.uid_generator import _safe_append, generate_new_uid
+        modify_pid = app.config.get('uid_strategy.modify_patient_id', True)
+        from utils.uid_generator import batch_modify_uids
 
-        ts = datetime.now().strftime('%Y%m%d%H%M%S%f')[:-3]
-        study_map: dict = {}
-        series_map: dict = {}
-        accession_map: dict = {}
-
-        for idx, (fp, _) in enumerate(app.browser_data):
+        datasets = []
+        for fp, _ in app.browser_data:
+            if cancel.is_set():
+                break
             try:
                 ds = pydicom.dcmread(fp)
-
-                old_study = str(getattr(ds, 'StudyInstanceUID', ''))
-                if old_study:
-                    if old_study not in study_map:
-                        study_map[old_study] = (
-                            _safe_append(old_study, ts)
-                            if method == 'append_timestamp' else generate_new_uid()
-                        )
-                        if new_accession:
-                            accession_map[old_study] = f"{datetime.now().strftime('%Y%m%d')}{random.randint(1000,9999)}"
-                    ds.StudyInstanceUID = study_map[old_study]
-                    if new_accession and old_study in accession_map:
-                        ds.AccessionNumber = accession_map[old_study]
-
-                old_series = str(getattr(ds, 'SeriesInstanceUID', ''))
-                if old_series:
-                    if old_series not in series_map:
-                        series_map[old_series] = (
-                            _safe_append(old_series, ts)
-                            if method == 'append_timestamp' else generate_new_uid()
-                        )
-                    ds.SeriesInstanceUID = series_map[old_series]
-
-                old_sop = str(getattr(ds, 'SOPInstanceUID', ''))
-                if old_sop:
-                    file_hash = f"{abs(hash(fp)) % 99999:05d}"
-                    ds.SOPInstanceUID = (
-                        _safe_append(old_sop, f"{ts}.{file_hash}")
-                        if method == 'append_timestamp' else generate_new_uid()
-                    )
-
-                if hasattr(ds, 'file_meta') and hasattr(ds, 'SOPInstanceUID'):
-                    ds.file_meta.MediaStorageSOPInstanceUID = ds.SOPInstanceUID
-
-                # PatientID 追加时间戳后缀，同一原始ID保持一致
-                if new_accession and hasattr(ds, 'PatientID') and ds.PatientID:
-                    original_pid = str(ds.PatientID).strip()
-                    if original_pid not in accession_map.get('_pid_map', {}):
-                        if '_pid_map' not in accession_map:
-                            accession_map['_pid_map'] = {}
-                        accession_map['_pid_map'][original_pid] = f"{original_pid}_{ts[:8]}"[:64]
-                    ds.PatientID = accession_map['_pid_map'][original_pid]
-
-                DicomEditor.save_file(ds, _out_path(fp, src_root, out_root))
+                datasets.append((fp, ds))
             except Exception as e:
-                print(f"修改UID失败 {fp}: {e}")
+                print(f"读取失败 {fp}: {e}")
 
-            pct = (idx + 1) / len(app.browser_data) * 100
+        if not cancel.is_set():
+            batch_modify_uids(datasets, method=method, new_accession=new_accession,
+                              modify_patient_id=modify_pid, force_unique_study=force_unique)
+
+        count = 0
+        for idx, (fp, ds) in enumerate(datasets):
+            if cancel.is_set():
+                break
+            try:
+                DicomEditor.save_file(ds, _out_path(fp, src_root, out_root))
+                count += 1
+            except Exception as e:
+                print(f"保存失败 {fp}: {e}")
+            pct = (idx + 1) / len(datasets) * 100
             app.root.after(0, lambda p=pct: app.browser_progress.config(value=p))
 
-        return len(app.browser_data)
+        return count
 
+    mode_tip = "（每文件独立Study）" if force_unique else "（保持Study关联）"
     _batch_run(app, fn,
-               f"确定要修改 {len(app.browser_data)} 个文件的UID吗？\n（输出到源文件夹同级的 _updated 目录）",
+               f"确定要修改 {len(app.browser_data)} 个文件的UID吗？{mode_tip}\n（输出到源文件夹同级的 _updated 目录）",
                "批量修改UID完成，共处理 {} 个文件")
 
 
