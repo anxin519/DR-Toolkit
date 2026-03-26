@@ -121,6 +121,8 @@ class WorklistSCP:
     def _create_response(self, item: dict) -> Dataset:
         """构建C-FIND响应Dataset"""
         ds = Dataset()
+        # 声明UTF-8编码，确保中文正常传输
+        ds.SpecificCharacterSet = 'ISO_IR 192'
         ds.PatientName = item.get('PatientName', '')
         ds.PatientID = item.get('PatientID', '')
         ds.PatientSex = item.get('PatientSex', '')

@@ -42,8 +42,10 @@ class ConfigManager:
             "prefix": "ANON"
         },
         "uid_strategy": {
-            "method": "append_timestamp",  # append_timestamp, regenerate, custom_suffix
-            "custom_suffix": ""
+            "method": "regenerate",  # regenerate（推荐）, append_timestamp, custom_suffix
+            "custom_suffix": "",
+            "new_accession": True,       # 同时重新生成AccessionNumber
+            "modify_patient_id": True    # 在PatientID后追加时间戳，避免患者合并冲突
         }
     }
     

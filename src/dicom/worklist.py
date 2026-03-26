@@ -15,6 +15,7 @@ class WorklistSCU:
               patient_id=None, patient_name=None, modality=None):
         """查询Worklist"""
         ds = Dataset()
+        ds.SpecificCharacterSet = 'ISO_IR 192'  # 声明UTF-8，避免中文乱码
         ds.PatientName = patient_name or ''
         ds.PatientID = patient_id or ''
         ds.PatientSex = ''

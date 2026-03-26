@@ -207,8 +207,9 @@ def fix_dataset_encoding(dataset: Dataset) -> Dataset:
                 pass
 
     if fixed_any:
-        # 更新字符集声明为 UTF-8，避免下次再乱码
-        dataset.SpecificCharacterSet = "ISO_IR 192"
+        # 更新字符集声明为 UTF-8
+        # 注意：SpecificCharacterSet 的 VR 是 CS（最长16字符），ISO_IR 192 符合规范
+        dataset.SpecificCharacterSet = 'ISO_IR 192'
 
     return dataset
 

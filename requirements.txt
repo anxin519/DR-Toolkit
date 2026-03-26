@@ -1,3 +1,6 @@
-pydicom==2.4.4
-pynetdicom==2.0.2
-PyQt5==5.15.10
+pydicom>=2.4.4
+pynetdicom>=2.0.2
+ttkbootstrap>=1.10.1
+numpy>=1.24.0
+pillow>=10.0.0
+openpyxl>=3.1.0

@@ -28,6 +28,7 @@ storage/
 # 打包输出
 *.exe
 *.spec
+*.zip
 dist/
 build/
 

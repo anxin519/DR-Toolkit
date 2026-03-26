@@ -1,3 +1,0 @@
-pydicom==2.4.4
-pynetdicom==2.0.2
-ttkbootstrap==1.10.1
