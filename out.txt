@@ -1,0 +1,23 @@
+2026-04-02 12:03:05 - forward - INFO - 转发队列工作线程已启动
+Traceback (most recent call last):
+  File "E:\kiro\src\main_complete.py", line 90, in <module>
+    main()
+    ~~~~^^
+  File "E:\kiro\src\main_complete.py", line 85, in main
+    DicomToolApp(root)
+    ~~~~~~~~~~~~^^^^^^
+  File "E:\kiro\src\main_complete.py", line 34, in __init__
+    self._build_ui()
+    ~~~~~~~~~~~~~~^^
+  File "E:\kiro\src\main_complete.py", line 44, in _build_ui
+    self.tab_worklist = tab_worklist.build(self)
+                        ~~~~~~~~~~~~~~~~~~^^^^^^
+  File "E:\kiro\src\gui\tab_worklist.py", line 307, in build
+    return WorklistTab(app.notebook, app)
+  File "E:\kiro\src\gui\tab_worklist.py", line 20, in __init__
+    self._build_ui()
+    ~~~~~~~~~~~~~~^^
+  File "E:\kiro\src\gui\tab_worklist.py", line 137, in _build_ui
+    rsb.pack(side='right', fill='y')
+    ^^^
+NameError: name 'rsb' is not defined. Did you mean: 'wsb'?

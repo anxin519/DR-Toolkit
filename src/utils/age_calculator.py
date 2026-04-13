@@ -9,13 +9,18 @@ def calculate_age(birth_date, study_date=None):
     study_date: 检查日期，默认为当前日期
     返回: 年龄字符串，如 "035Y"
     """
-    if not birth_date or len(birth_date) != 8:
-        return None
-    
     try:
-        birth = datetime.strptime(birth_date, '%Y%m%d')
-        if study_date and len(study_date) == 8:
-            study = datetime.strptime(study_date, '%Y%m%d')
+        birth_str = str(birth_date).strip()
+        if not birth_str or len(birth_str) != 8:
+            return None
+        
+        birth = datetime.strptime(birth_str, '%Y%m%d')
+        if study_date:
+            study_str = str(study_date).strip()
+            if len(study_str) == 8:
+                study = datetime.strptime(study_str, '%Y%m%d')
+            else:
+                study = datetime.now()
         else:
             study = datetime.now()
         
@@ -24,5 +29,5 @@ def calculate_age(birth_date, study_date=None):
             age_years -= 1
         
         return f"{age_years:03d}Y"
-    except:
+    except (ValueError, TypeError):
         return None

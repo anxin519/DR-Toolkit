@@ -31,38 +31,53 @@ class DicomToolApp:
         self.logger = Logger.get_logger('app')
         self.forward_queue = ForwardQueue()
 
-        # ── 共享状态 ──────────────────────────────────────────────────
-        self.scp = None                  # DICOM SCP 实例
-        self.worklist_scp = None         # Worklist SCP 实例
-        self.current_dataset = None      # 编辑器当前打开的 dataset
-        self.current_filepath = None     # 编辑器当前文件路径
-        self.current_tk_image = None     # 防止 GC 回收图像
-        self.file_paths: list = []       # 发送页文件列表
-        self.browser_data: list = []     # 文件浏览器数据
-
-        # ── Tkinter 变量 ──────────────────────────────────────────────
-        self.auto_forward_var = tk.BooleanVar(value=False)
-        self.wc_var = tk.IntVar(value=0)
-        self.ww_var = tk.IntVar(value=400)
-
         self._build_ui()
+        self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
         self.logger.info("应用启动")
 
     def _build_ui(self):
         self.notebook = ttk_boot.Notebook(self.root, bootstyle="primary")
         self.notebook.pack(fill='both', expand=True, padx=5, pady=5)
 
-        self.notebook.add(tab_send.build(self),     text="📤 发送")
-        self.notebook.add(tab_receive.build(self),  text="📥 接收")
-        self.notebook.add(tab_worklist.build(self), text="📋 Worklist")
-        self.notebook.add(tab_editor.build(self),   text="✏️ 编辑器")
-        self.notebook.add(tab_browser.build(self),  text="📁 文件浏览")
+        self.tab_send = tab_send.build(self)
+        self.tab_receive = tab_receive.build(self)
+        self.tab_worklist = tab_worklist.build(self)
+        self.tab_editor = tab_editor.build(self)
+        self.tab_browser = tab_browser.build(self)
+
+        self.notebook.add(self.tab_send,     text="📤 发送")
+        self.notebook.add(self.tab_receive,  text="📥 接收")
+        self.notebook.add(self.tab_worklist, text="📋 Worklist")
+        self.notebook.add(self.tab_editor,   text="✏️ 编辑器")
+        self.notebook.add(self.tab_browser,  text="📁 文件浏览")
 
         self.status = ttk_boot.Label(self.root, text="就绪", relief='sunken', anchor='w')
         self.status.pack(side='bottom', fill='x')
 
     def set_status(self, msg: str):
         self.root.after(0, lambda: self.status.config(text=msg))
+
+    def _on_closing(self):
+        """窗口关闭时清理后台服务，防止端口泄露"""
+        try:
+            if hasattr(self, 'tab_receive') and self.tab_receive.scp:
+                self.tab_receive.scp.stop()
+                self.logger.info("关闭时停止 DICOM SCP")
+        except Exception:
+            pass
+        try:
+            if hasattr(self, 'tab_worklist') and self.tab_worklist.worklist_scp:
+                self.tab_worklist.worklist_scp.stop()
+                self.logger.info("关闭时停止 Worklist SCP")
+        except Exception:
+            pass
+        try:
+            self.forward_queue.stop_worker()
+            self.logger.info("关闭时停止转发队列")
+        except Exception:
+            pass
+        self.logger.info("应用退出")
+        self.root.destroy()
 
 
 def main():

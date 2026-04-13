@@ -4,19 +4,12 @@ echo 正在打包 DICOM 运维工具...
 
 pip install pyinstaller >nul 2>&1
 
-pyinstaller ^
-  --onefile ^
-  --windowed ^
-  --name="DICOM运维工具" ^
-  --add-data "config;config" ^
-  --hidden-import ttkbootstrap ^
-  --hidden-import pynetdicom ^
-  --hidden-import pydicom ^
-  --hidden-import PIL ^
-  --hidden-import openpyxl ^
-  --hidden-import numpy ^
-  src/main_complete.py
+pyinstaller "DICOM运维工具.spec"
 
 echo.
-echo 打包完成，可执行文件在 dist 目录
+if exist "dist\DICOM运维工具.exe" (
+    echo 打包成功！文件位于 dist\DICOM运维工具.exe
+) else (
+    echo 打包失败，请查看上方错误信息
+)
 pause

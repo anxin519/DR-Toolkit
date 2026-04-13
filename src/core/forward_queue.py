@@ -29,7 +29,8 @@ class ForwardQueue:
             try:
                 with open(self.queue_file, 'r', encoding='utf-8') as f:
                     self.queue = json.load(f)
-            except:
+            except Exception as e:
+                self.logger.warning(f"加载转发队列失败: {e}")
                 self.queue = []
     
     def save_queue(self):
@@ -77,7 +78,7 @@ class ForwardQueue:
                     
                     if task['retry_count'] >= task['max_retries']:
                         task['status'] = 'failed'
-                        self.logger.error(f"转发失败（已达最大重试次数）: {task['filepath']} -> {task['target_node']['name']}, 错误: {error}")
+                        self.logger.exception(f"转发失败（已达最大重试次数）: {task['filepath']} -> {task['target_node']['name']}, 错误: {error}")
                     else:
                         # 5分钟后重试
                         task['next_retry_at'] = (datetime.now() + timedelta(minutes=5)).isoformat()
@@ -164,5 +165,5 @@ class ForwardQueue:
                 # 每30秒检查一次
                 time.sleep(30)
             except Exception as e:
-                self.logger.error(f"转发队列工作线程错误: {e}")
+                self.logger.exception(f"转发队列工作线程错误: {e}")
                 time.sleep(30)

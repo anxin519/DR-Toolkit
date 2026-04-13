@@ -30,9 +30,8 @@ class ExcelExporter:
         if headers:
             for col, header in enumerate(headers, 1):
                 cell = ws.cell(row=1, column=col, value=header)
-                cell.font = Font(bold=True, size=11)
+                cell.font = Font(bold=True, size=11, color="FFFFFF")
                 cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
-                cell.font = Font(bold=True, color="FFFFFF")
                 cell.alignment = Alignment(horizontal='center', vertical='center')
         
         # 写入数据

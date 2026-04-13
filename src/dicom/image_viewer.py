@@ -2,6 +2,9 @@
 """DICOM图像查看器"""
 import numpy as np
 from PIL import Image, ImageTk
+import logging
+
+logger = logging.getLogger('image_viewer')
 
 
 class DicomImageViewer:
@@ -10,19 +13,31 @@ class DicomImageViewer:
     @staticmethod
     def load_image(dataset):
         """
-        加载DICOM图像数据，多帧取第一帧。
-        返回: 2D numpy array 或 None
+        加载DICOM图像数据。
+        支持灰度图、RGB图、多帧图像（取第一帧）。
+        返回: numpy array (2D灰度 或 3D RGB) 或 None
         """
         if not hasattr(dataset, 'pixel_array'):
             return None
         try:
             pixel_array = dataset.pixel_array
-            # 多帧取第一帧
+            pi = str(getattr(dataset, 'PhotometricInterpretation', '')).strip()
+            samples = int(getattr(dataset, 'SamplesPerPixel', 1))
+
             if pixel_array.ndim == 3:
+                if samples >= 3 or pi in ('RGB', 'YBR_FULL', 'YBR_FULL_422'):
+                    # 彩色图像 (H, W, 3)，保持原样
+                    pass
+                else:
+                    # 多帧灰度图 (N, H, W)，取第一帧
+                    pixel_array = pixel_array[0]
+            elif pixel_array.ndim == 4:
+                # 多帧彩色 (N, H, W, 3)，取第一帧
                 pixel_array = pixel_array[0]
+
             return pixel_array
         except Exception as e:
-            print(f"加载图像失败: {e}")
+            logger.exception(f"加载图像失败: {e}")
             return None
 
     @staticmethod
@@ -74,13 +89,24 @@ class DicomImageViewer:
 
     @staticmethod
     def to_pil_image(pixel_array, center, width):
-        """转换为 PIL Image"""
-        img_array = DicomImageViewer.apply_window(pixel_array, center, width)
-        if img_array is None:
+        """转换为 PIL Image，支持灰度和RGB"""
+        if pixel_array is None:
             return None
-        if img_array.ndim == 2:
+        if pixel_array.ndim == 2:
+            # 灰度图：应用窗宽窗位
+            img_array = DicomImageViewer.apply_window(pixel_array, center, width)
+            if img_array is None:
+                return None
             return Image.fromarray(img_array, mode='L')
-        return Image.fromarray(img_array)
+        elif pixel_array.ndim == 3 and pixel_array.shape[2] in (3, 4):
+            # RGB/RGBA 彩色图：直接转换，不应用窗宽窗位
+            arr = pixel_array.astype(np.uint8) if pixel_array.dtype != np.uint8 else pixel_array
+            return Image.fromarray(arr)
+        else:
+            img_array = DicomImageViewer.apply_window(pixel_array, center, width)
+            if img_array is None:
+                return None
+            return Image.fromarray(img_array)
 
     @staticmethod
     def resize_image(pil_img, max_width, max_height):
