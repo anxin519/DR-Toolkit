@@ -98,7 +98,7 @@ def _chinese_score(text: str) -> float:
     return chinese / max(len(text), 1)
 
 
-def _try_decode(raw_bytes: bytes, encoding: str) -> str | None:
+def _try_decode(raw_bytes: bytes, encoding: str):
     """尝试用指定编码解码，失败返回 None"""
     try:
         return raw_bytes.decode(encoding, errors="strict")
@@ -106,7 +106,7 @@ def _try_decode(raw_bytes: bytes, encoding: str) -> str | None:
         return None
 
 
-def _best_decode(raw_bytes: bytes, declared_encoding: str | None = None) -> str:
+def _best_decode(raw_bytes: bytes, declared_encoding = None) -> str:
     """
     用最优编码解码字节串。
     优先使用声明的编码，若结果有乱码则逐一试探候选编码，
@@ -146,7 +146,7 @@ def _best_decode(raw_bytes: bytes, declared_encoding: str | None = None) -> str:
 
 # ── 公开 API ──────────────────────────────────────────────────────────────────
 
-def get_declared_encoding(dataset: Dataset) -> str | None:
+def get_declared_encoding(dataset: Dataset)   # type: Optional[str]:
     """从 SpecificCharacterSet 标签获取 Python codec 名称"""
     charset_tag = getattr(dataset, "SpecificCharacterSet", None)
     if not charset_tag:
@@ -158,7 +158,7 @@ def get_declared_encoding(dataset: Dataset) -> str | None:
     return _DICOM_CHARSET_MAP.get(charset_str)
 
 
-def fix_string_value(raw_value, declared_encoding: str | None = None) -> str:
+def fix_string_value(raw_value, declared_encoding = None) -> str:
     """
     修复单个字符串值的乱码。
     raw_value 可以是 str（已被 pydicom 错误解码）或 bytes（原始字节）。
@@ -214,7 +214,7 @@ def fix_dataset_encoding(dataset: Dataset) -> Dataset:
     return dataset
 
 
-def safe_str(value, dataset: Dataset | None = None) -> str:
+def safe_str(value, dataset=None) -> str:
     """
     安全地将 DICOM 标签值转为可读字符串。
     如果 dataset 提供，会参考其 SpecificCharacterSet。
@@ -246,3 +246,4 @@ def diagnose(raw_bytes: bytes) -> list[dict]:
                 })
     results.sort(key=lambda x: x["score"], reverse=True)
     return results
+

@@ -1,4 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
+# Win7 32位 Python 3.8 专用打包配置
+# 在 Win7 32位机器上执行：pyinstaller build_win7.spec
 
 a = Analysis(
     ['src/main_complete.py'],
@@ -17,12 +19,11 @@ a = Analysis(
         'PIL.ImageDraw',
         'openpyxl',
         'numpy',
+        'pkg_resources',
         'jaraco',
         'jaraco.text',
-        'jaraco.context',
         'jaraco.functools',
-        'pkg_resources',
-        'pkg_resources.extern',
+        'jaraco.context',
     ],
     hookspath=[],
     hooksconfig={},
@@ -30,10 +31,9 @@ a = Analysis(
     excludes=[
         'PyQt5', 'PySide6', 'PySide2', 'PyQt6',
         'sqlalchemy', 'pandas', 'IPython', 'jupyter',
-        'matplotlib', 'scipy', 'sklearn', 'sqlite3',
+        'matplotlib', 'scipy', 'sklearn',
         'pytest', 'unittest',
-        'pydoc_data', 'pip',
-        'bz2', 'lzma', 'curses'
+        'bz2', 'lzma', 'curses',
     ],
     noarchive=False,
     optimize=0,
@@ -51,7 +51,7 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,          # Win7上UPX容易出问题，关闭
     upx_exclude=[],
     runtime_tmpdir=None,
     console=False,

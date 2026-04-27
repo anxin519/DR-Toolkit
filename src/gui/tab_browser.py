@@ -216,7 +216,7 @@ class BrowserTab(ttk_boot.Frame):
 
         threading.Thread(target=run, daemon=True).start()
 
-    def _find_common_root(self, paths: list[str]) -> str:
+    def _find_common_root(self, paths) -> str:
         if not paths: return ''
         common = os.path.commonpath(paths)
         return common if os.path.isdir(common) else os.path.dirname(common)
